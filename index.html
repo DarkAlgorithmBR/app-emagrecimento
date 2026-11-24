@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitBook Pro - Hub de PDFs Gamificado</title>
+  <!-- Tailwind CSS CDN para estilização moderna e rápida -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            gold: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+            }
+          },
+          animation: {
+            'bounce-slow': 'bounce 2.5s infinite',
+            'pulse-fast': 'pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'spin-slow': 'spin 8s linear infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Estilos personalizados e scrollbar elegante */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-40px); }
+    }
+    .floating-xp {
+      position: fixed;
+      pointer-events: none;
+      font-weight: 800;
+      color: #34d399;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      animation: floatUp 1.2s ease-out forwards;
+      z-index: 9999;
+    }
+    /* Estilo da Roleta */
+    .wheel-pointer {
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 24px solid #f59e0b;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+
+  <!-- ================= TOP HEADER GAMIFICADO ================= -->
+  <header class="sticky top-0 z-40 glass-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3 flex items-center justify-between gap-4">
+      
+      <!-- Logo & Título -->
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg shadow-brand-500/30">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+              FitBook Gamified
+            </span>
+            <span class="bg-brand-500/20 text-brand-400 border border-brand-500/30 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
+              v2.0
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Transforme sua leitura em resultados e recompensas</p>
+        </div>
+      </div>
+
+      <!-- Barra de Status do Jogador (Streak, Moedas, Nível, XP) -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        
+        <!-- Ofensiva Diária (Streak) -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/30 px-3 py-1.5 rounded-xl shadow-inner cursor-pointer hover:border-amber-500/60 transition group" title="Sua ofensiva de dias seguidos lendo!">
+          <span class="text-xl group-hover:scale-125 transition-transform">🔥</span>
+          <div>
+            <div class="text-[10px] text-amber-300/80 uppercase font-semibold leading-none">Ofensiva</div>
+            <div class="font-bold text-sm text-amber-400 leading-tight" id="streakDisplay">1 Dia</div>
+          </div>
+        </div>
+
+        <!-- Moedas FitCoins -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 border border-yellow-500/30 px-3 py-1.5 rounded-xl shadow-inner cursor-pointer hover:border-yellow-500/60 transition" onclick="switchTab('shop')" title="Suas Moedas FitCoins para trocar por prêmios">
+          <span class="text-xl animate-bounce-slow">🪙</span>
+          <div>
+            <div class="text-[10px] text-yellow-300/80 uppercase font-semibold leading-none">FitCoins</div>
+            <div class="font-bold text-sm text-yellow-400 leading-tight" id="coinsDisplay">120</div>
+          </div>
+        </div>
+
+        <!-- Nível e Barra de XP -->
+        <div class="hidden md:flex flex-col w-36 bg-slate-900/90 border border-slate-700/60 px-3 py-1.5 rounded-xl">
+          <div class="flex justify-between items-center text-[10px] mb-1 font-semibold">
+            <span class="text-emerald-400 font-bold" id="levelNameDisplay">Nv. 1 Iniciante</span>
+            <span class="text-slate-400" id="xpRatioDisplay">0/100 XP</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+            <div id="xpProgressBar" class="bg-gradient-to-r from-brand-500 to-cyan-400 h-2 rounded-full transition-all duration-500" style="width: 15%"></div>
+          </div>
+        </div>
+
+        <!-- Botão Check-in Diário -->
+        <button id="headerCheckinBtn" onclick="openCheckinModal()" class="relative flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs sm:text-sm shadow-lg shadow-orange-500/25 active:scale-95 transition-all">
+          <span class="text-base">🎁</span>
+          <span class="hidden sm:inline">Check-in</span>
+          <span id="checkinBadgeNotification" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Navegação de Abas -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/80 flex gap-2 overflow-x-auto py-2 text-sm font-medium">
+      <button onclick="switchTab('library')" id="tabBtn-library" class="tab-btn px-4 py-1.5 rounded-lg text-emerald-400 bg-brand-500/10 border border-brand-500/30 flex items-center gap-2 transition">
+        <span>📚</span> Biblioteca & PDFs
+      </button>
+      <button onclick="switchTab('rewards')" id="tabBtn-rewards" class="tab-btn px-4 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 transition">
+        <span>🎁</span> Recompensas Diárias
+      </button>
+      <button onclick="switchTab('quests')" id="tabBtn-quests" class="tab-btn px-4 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 transition">
+        <span>🎯</span> Missões Diárias <span id="questBadgeCount" class="bg-red-500 text-white text-[10px] px-1.5 rounded-full font-bold">2</span>
+      </button>
+      <button onclick="switchTab('achievements')" id="tabBtn-achievements" class="tab-btn px-4 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 transition">
+        <span>🏆</span> Conquistas (<span id="unlockedBadgesCount">0</span>/6)
+      </button>
+      <button onclick="switchTab('shop')" id="tabBtn-shop" class="tab-btn px-4 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 transition">
+        <span>💎</span> Loja VIP
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= CONTEÚDO PRINCIPAL ================= -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ================= ABA 1: BIBLIOTECA DE PDFS ================= -->
+    <section id="view-library" class="space-y-6">
+      
+      <!-- Banner de Boas-Vindas & Ação Rápida -->
+      <div class="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-slate-850 to-brand-950 border border-brand-500/20 shadow-2xl">
+        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 text-xs font-semibold mb-3 border border-brand-500/20">
+              ✨ Recompensas ativas: Ganhe +15 XP e +5 FitCoins a cada leitura!
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Sua Coleção de Conhecimento & Transformação
+            </h1>
+            <p class="text-slate-300 text-sm mt-1 max-w-xl">
+              Acesse seus guias, protocolos e e-books. Cada página lida eleva seu nível, desbloqueia badges exclusivas e acumula moedas!
+            </p>
+          </div>
+          
+          <div class="flex flex-wrap gap-3">
+            <!-- Botão Importar PDF Local -->
+            <label class="cursor-pointer flex items-center gap-2 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-brand-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>+ Importar Meu PDF</span>
+              <input type="file" id="pdfFileInput" accept="application/pdf" class="hidden" onchange="handleUserPdfUpload(event)" />
+            </label>
+
+            <button onclick="openCheckinModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium px-4 py-3 rounded-2xl transition">
+              <span>🎁 Recompensas de Hoje</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros e Barra de Pesquisa -->
+      <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+        
+        <!-- Categorias -->
+        <div class="flex flex-wrap gap-2 text-xs font-semibold">
+          <button onclick="filterCategory('todos')" class="category-pill active px-3.5 py-2 rounded-xl bg-brand-500 text-slate-950 shadow-md">
+            Todos (<span id="count-todos">0</span>)
+          </button>
+          <button onclick="filterCategory('alimentacao')" class="category-pill px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:border-brand-500/40">
+            🥗 Alimentação (<span id="count-alimentacao">0</span>)
+          </button>
+          <button onclick="filterCategory('treinos')" class="category-pill px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:border-brand-500/40">
+            🏃 Treinos & HIIT (<span id="count-treinos">0</span>)
+          </button>
+          <button onclick="filterCategory('mente')" class="category-pill px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:border-brand-500/40">
+            🧠 Mente & Foco (<span id="count-mente">0</span>)
+          </button>
+          <button onclick="filterCategory('meus-pdfs')" class="category-pill px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:border-brand-500/40">
+            📁 Meus PDFs (<span id="count-meus-pdfs">0</span>)
+          </button>
+        </div>
+
+        <!-- Busca -->
+        <div class="relative w-full sm:w-72">
+          <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Buscar PDF por título ou tag..." class="w-full bg-slate-900/90 border border-slate-800 focus:border-brand-500 rounded-xl px-4 py-2 pl-9 text-xs sm:text-sm text-slate-200 placeholder-slate-500 outline-none transition" />
+          <span class="absolute left-3 top-2.5 text-slate-500 text-sm">🔍</span>
+        </div>
+      </div>
+
+      <!-- Grid de Livros / PDFs -->
+      <div id="pdfGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+
+      <!-- Estado Vazio caso nada encontrado -->
+      <div id="emptyState" class="hidden text-center py-16 glass-card rounded-3xl border border-slate-800">
+        <span class="text-5xl block mb-3">🔍</span>
+        <h3 class="text-lg font-bold text-slate-300">Nenhum PDF encontrado</h3>
+        <p class="text-sm text-slate-500 mt-1">Tente buscar outro termo ou importe um arquivo PDF do seu computador.</p>
+        <button onclick="document.getElementById('pdfFileInput').click()" class="mt-4 inline-flex items-center gap-2 bg-brand-500/20 text-brand-400 border border-brand-500/30 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-500/30 transition">
+          + Importar Novo PDF
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ================= ABA 2: RECOMPENSAS DIÁRIAS & ROLETA ================= -->
+    <section id="view-rewards" class="hidden space-y-8">
+      
+      <!-- Topo: Streak e Calendário de 7 Dias -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 border border-slate-800 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <span class="text-xs uppercase font-bold tracking-wider text-amber-400">Rotina & Consistência</span>
+            <h2 class="text-2xl font-black text-white flex items-center gap-2 mt-1">
+              🔥 Calendário Semanal de Recompensas
+            </h2>
+            <p class="text-slate-400 text-sm">Faça check-in todos os dias para manter sua ofensiva viva e ganhar prêmios cada vez maiores!</p>
+          </div>
+          <button id="mainCheckinActionBtn" onclick="doDailyCheckin()" class="w-full md:w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-xl shadow-amber-500/25 active:scale-95 transition flex items-center justify-center gap-2">
+            <span>🎁</span>
+            <span>Resgatar Recompensa de Hoje</span>
+          </button>
+        </div>
+
+        <!-- Dias 1 a 7 Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" id="sevenDaysGrid">
+          <!-- Gerado dinamicamente -->
+        </div>
+      </div>
+
+      <!-- Roleta da Sorte Diária -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center glass-card rounded-3xl p-6 sm:p-8 border border-slate-800">
+        <div class="lg:col-span-5 flex flex-col items-center justify-center text-center">
+          <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
+            <!-- Ponteiro -->
+            <div class="absolute -top-3 z-30 wheel-pointer"></div>
+            <!-- Canvas da Roleta -->
+            <canvas id="wheelCanvas" width="300" height="300" class="rounded-full shadow-2xl border-4 border-slate-800"></canvas>
+            <!-- Centro da Roleta -->
+            <button id="spinCenterBtn" onclick="spinWheel()" class="absolute z-20 w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 font-black text-xs uppercase shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center border-4 border-slate-900">
+              GIRAR!
+            </button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-semibold border border-yellow-500/30">
+            🎰 Minigame Diário
+          </div>
+          <h3 class="text-2xl font-black text-white">Roleta da Sorte FitBook</h3>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            Gire a roleta uma vez por dia gratuitamente e teste sua sorte para ganhar pacotes gigantes de FitCoins, XP e bônus de leitura.
+          </p>
+          
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-center">
+              <span class="text-2xl block mb-1">🪙 200</span>
+              <span class="text-xs text-yellow-400 font-semibold">Grande Prêmio</span>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-center">
+              <span class="text-2xl block mb-1">⚡ +150 XP</span>
+              <span class="text-xs text-brand-400 font-semibold">Subida de Nível</span>
+            </div>
+            <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-center">
+              <span class="text-2xl block mb-1">🎁 Baú Épico</span>
+              <span class="text-xs text-purple-400 font-semibold">Itens Especiais</span>
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center gap-3">
+            <button id="spinMainBtn" onclick="spinWheel()" class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-bold px-6 py-3 rounded-2xl shadow-lg shadow-yellow-500/20 active:scale-95 transition">
+              🎰 Girar Roleta Agora
+            </button>
+            <span id="spinStatusText" class="text-xs text-slate-400">1 Giro disponível hoje!</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= ABA 3: MISSÕES DIÁRIAS (QUESTS) ================= -->
+    <section id="view-quests" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            🎯 Missões & Desafios Diários
+          </h2>
+          <p class="text-slate-400 text-sm">Cumpra os objetivos diários para multiplicar seus pontos e manter o foco.</p>
+        </div>
+        <div class="text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+          ⏳ Reseta todo dia à meia-noite
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="questsListContainer">
+        <!-- Injetado dinamicamente -->
+      </div>
+    </section>
+
+    <!-- ================= ABA 4: CONQUISTAS & BADGES ================= -->
+    <section id="view-achievements" class="hidden space-y-6">
+      <div>
+        <h2 class="text-2xl font-black text-white flex items-center gap-2">
+          🏆 Mural de Conquistas & Troféus
+        </h2>
+        <p class="text-slate-400 text-sm">Colecione medalhas que provam seu avanço e dedicação nos estudos.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="badgesContainer">
+        <!-- Injetado dinamicamente -->
+      </div>
+    </section>
+
+    <!-- ================= ABA 5: LOJA VIP FITCOINS ================= -->
+    <section id="view-shop" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            💎 Loja de Recompensas Exclusivas
+          </h2>
+          <p class="text-slate-400 text-sm">Troque suas FitCoins conquistadas lendo por e-books raros e temas lendários.</p>
+        </div>
+        <div class="bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-2xl flex items-center gap-2">
+          <span class="text-2xl">🪙</span>
+          <div>
+            <div class="text-[10px] text-yellow-300 font-bold uppercase">Seu Saldo Atual</div>
+            <div class="text-lg font-black text-yellow-400" id="shopCoinsBalance">120 FitCoins</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="shopItemsContainer">
+        <!-- Injetado dinamicamente -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL LEITOR DE PDF IMERSIVO ================= -->
+  <div id="pdfReaderModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex flex-col transition-all">
+    
+    <!-- Barra superior do leitor -->
+    <div class="glass-nav px-4 py-3 flex items-center justify-between border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <button onclick="closePdfReader()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="Fechar leitor">
+          ✕
+        </button>
+        <div>
+          <h3 id="readerTitle" class="font-bold text-white text-sm sm:text-base leading-tight truncate max-w-xs sm:max-w-md">
+            Título do Livro
+          </h3>
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span id="readerCategoryBadge" class="text-brand-400 font-medium">Categoria</span>
+            <span>•</span>
+            <span id="readerPageIndicator">Página 1 de 10</span>
+            <span>•</span>
+            <span class="text-amber-400 flex items-center gap-1">⏱️ <span id="readingTimer">00:00</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de progresso de leitura e botão de completar -->
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+          <span class="text-slate-400">Progresso:</span>
+          <span id="readerPercentText" class="font-bold text-emerald-400">10%</span>
+        </div>
+        
+        <button onclick="claimPageReward()" id="btnPageReward" class="bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-400 hover:to-emerald-500 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-brand-500/20 active:scale-95 transition">
+          <span>✨</span>
+          <span class="hidden sm:inline">Marcar Página Lida</span> (+15 XP)
+        </button>
+      </div>
+    </div>
+
+    <!-- Corpo do Leitor -->
+    <div class="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-900/50">
+      <div class="w-full max-w-4xl bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-12 flex flex-col min-h-full">
+        
+        <!-- Conteúdo do PDF (simulado dinâmico ou iframe de PDF importado) -->
+        <div id="readerContentArea" class="flex-1 flex flex-col justify-start">
+          <!-- Renderizado via JS -->
+        </div>
+
+        <!-- Navegação de Páginas -->
+        <div class="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-between">
+          <button onclick="prevReaderPage()" id="prevPageBtn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-medium text-xs sm:text-sm transition disabled:opacity-40 disabled:pointer-events-none">
+            ← Página Anterior
+          </button>
+          
+          <div class="text-xs text-slate-400 font-semibold" id="readerPageNumberFooter">
+            Página 1
+          </div>
+
+          <button onclick="nextReaderPage()" id="nextPageBtn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs sm:text-sm transition disabled:opacity-40 disabled:pointer-events-none">
+            Próxima Página →
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= MODAL DE CHECK-IN RÁPIDO ================= -->
+  <div id="checkinModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl"></div>
+      
+      <button onclick="closeCheckinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">✕</button>
+      
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center text-4xl shadow-xl shadow-amber-500/30 mb-4 animate-bounce-slow">
+        🎁
+      </div>
+
+      <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Recompensa Diária</span>
+      <h3 class="text-2xl font-black text-white mt-1">Check-in de Hoje!</h3>
+      <p class="text-slate-300 text-sm mt-2">
+        Volte todos os dias para acumular pontos de ofensiva, subir de nível e desbloquear guias VIP gratuitos!
+      </p>
+
+      <div class="my-6 p-4 rounded-2xl bg-slate-950/80 border border-amber-500/20 flex items-center justify-around">
+        <div>
+          <div class="text-2xl font-black text-brand-400">+50 XP</div>
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Experiência</div>
+        </div>
+        <div class="w-px h-8 bg-slate-800"></div>
+        <div>
+          <div class="text-2xl font-black text-yellow-400">+25 🪙</div>
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">FitCoins</div>
+        </div>
+        <div class="w-px h-8 bg-slate-800"></div>
+        <div>
+          <div class="text-2xl font-black text-orange-400">+1 🔥</div>
+          <div class="text-[11px] text-slate-400 uppercase font-semibold">Ofensiva</div>
+        </div>
+      </div>
+
+      <button id="modalClaimCheckinBtn" onclick="doDailyCheckin()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-orange-500/30 active:scale-95 transition">
+        Coletar Recompensa! 🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= NOTIFICAÇÃO TOAST FLUTUANTE ================= -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 flex items-center gap-3 bg-slate-900 border border-brand-500/40 text-white px-5 py-3.5 rounded-2xl shadow-2xl">
+    <span id="toastIcon" class="text-2xl">🎉</span>
+    <div>
+      <div id="toastTitle" class="font-bold text-sm text-brand-300">Conquista Desbloqueada!</div>
+      <div id="toastMessage" class="text-xs text-slate-300">Você ganhou 50 XP e 10 Moedas.</div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS DO APLICATIVO ================= -->
+  <script>
+    /* ========================================================
+       1. ESTADO GLOBAL & PERSISTÊNCIA LOCALSTORAGE
+       ======================================================== */
+    const STORAGE_KEY = 'FITBOOK_USER_DATA_V2';
+
+    // Estado padrão do usuário
+    const defaultState = {
+      xp: 45,
+      level: 1,
+      coins: 120,
+      streak: 1,
+      lastCheckinDate: null,
+      lastSpinDate: null,
+      pagesReadTotal: 4,
+      readTimeSeconds: 180,
+      readHistory: {}, // { [bookId]: { currentPage, maxPage, completed } }
+      userUploadedPdfs: [], // PDFs importados pelo usuário
+      unlockedRewards: ['vip_free_preview'],
+      badges: {
+        'first_step': { id: 'first_step', title: 'Primeiro Passo', desc: 'Abra e leia sua primeira página', icon: '🌱', unlocked: true, rewardXP: 30 },
+        'streak_3': { id: 'streak_3', title: 'Fogo Sagrado', desc: 'Atinja 3 dias consecutivos de ofensiva', icon: '🔥', unlocked: false, rewardXP: 100 },
+        'bookworm': { id: 'bookworm', title: 'Leitor Voraz', desc: 'Leia mais de 20 páginas de conteúdos', icon: '📖', unlocked: false, rewardXP: 150 },
+        'coin_hoarder': { id: 'coin_hoarder', title: 'Magnata Fit', desc: 'Acumule mais de 300 FitCoins', icon: '💰', unlocked: false, rewardXP: 120 },
+        'night_owl': { id: 'night_owl', title: 'Conhecimento Noturno', desc: 'Gire a roleta ou faça check-in diário', icon: '🦉', unlocked: true, rewardXP: 50 },
+        'master_mind': { id: 'master_mind', title: 'Mestre da Saúde', desc: 'Atinja o Nível 5 no aplicativo', icon: '👑', unlocked: false, rewardXP: 300 }
+      },
+      quests: [
+        { id: 'q1', title: 'Check-in Diário de Foco', desc: 'Faça seu check-in de hoje', progress: 0, target: 1, rewardXP: 50, rewardCoins: 20, claimed: false },
+        { id: 'q2', title: 'Ler 3 Páginas de Qualquer PDF', desc: 'Avance na leitura dos conteúdos', progress: 1, target: 3, rewardXP: 60, rewardCoins: 25, claimed: false },
+        { id: 'q3', title: 'Girar a Roleta da Sorte', desc: 'Tente a sorte na roleta diária', progress: 0, target: 1, rewardXP: 40, rewardCoins: 15, claimed: false },
+        { id: 'q4', title: 'Explorar a Loja VIP', desc: 'Visite a aba de recompensas e itens', progress: 0, target: 1, rewardXP: 25, rewardCoins: 10, claimed: false }
+      ]
+    };
+
+    let userState = loadState();
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return defaultState;
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...defaultState, ...parsed };
+      } catch (e) {
+        return defaultState;
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+      updateUIHeader();
+    }
+
+    /* ========================================================
+       2. CATÁLOGO DE PDFS DE DEMONSTRAÇÃO
+       ======================================================== */
+    const initialLibrary = [
+      {
+        id: 'pdf-1',
+        title: 'Guia Definitivo do Emagrecimento Consciente',
+        category: 'alimentacao',
+        categoryLabel: 'Alimentação & Dietas',
+        badge: 'Popular 🔥',
+        totalPages: 6,
+        readTimeEst: '15 min',
+        color: 'from-emerald-600 to-teal-800',
+        summary: 'Aprenda os segredos da reprogramação metabólica e como queimar gordura de forma contínua sem passar fome.',
+        pages: [
+          {
+            page: 1,
+            title: 'Capítulo 1: O Que Realmente Ativa a Queima de Gordura',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-base leading-relaxed">
+                  Para emagrecer de forma consistente e duradoura, precisamos abandonar a ideia de que o corpo é apenas uma calculadora de calorias. O tecido adiposo responde principalmente a <strong>mensageiros hormonais</strong>.
+                </p>
+                <div class="bg-brand-950/60 border-l-4 border-brand-500 p-4 rounded-r-xl">
+                  <h4 class="font-bold text-brand-400 text-sm">💡 Regra de Ouro do Metabolismo</h4>
+                  <p class="text-xs text-slate-300 mt-1">Quando os níveis de insulina estão cronicamente elevados, a enzima lipase sensível a hormônio é bloqueada, impedindo a saída de gordura das células.</p>
+                </div>
+                <p class="text-sm text-slate-300">
+                  Ao priorizar proteínas de alto valor biológico e vegetais ricos em fibras na primeira refeição do dia, sua curva glicêmica permanece estável por até 6 horas, atenuando picos de ansiedade alimentar.
+                </p>
+              </div>
+            `
+          },
+          {
+            page: 2,
+            title: 'Capítulo 2: Densidade Nutricional vs. Calorias Vazias',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-base leading-relaxed">
+                  Nem todas as calorias são processadas da mesma maneira. 200 calorias de brócolis e salmão exigem um efeito térmico dos alimentos (TEF) de até 25%, enquanto 200 calorias de açúcar refinado demandam menos de 3% para digestão.
+                </p>
+                <div class="grid grid-cols-2 gap-3 my-4">
+                  <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+                    <span class="text-2xl">🥑</span>
+                    <div class="text-xs font-bold text-emerald-400 mt-1">Gorduras Boas</div>
+                    <p class="text-[11px] text-slate-400">Promovem saciedade e síntese hormonal regular.</p>
+                  </div>
+                  <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+                    <span class="text-2xl">🍗</span>
+                    <div class="text-xs font-bold text-brand-400 mt-1">Proteínas Limpas</div>
+                    <p class="text-[11px] text-slate-400">Preservam massa magra e aceleram gasto basal.</p>
+                  </div>
+                </div>
+              </div>
+            `
+          },
+          {
+            page: 3,
+            title: 'Capítulo 3: Hidratação Estratégica e Digestão',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-base leading-relaxed">
+                  A desidratação subclínica é frequentemente confundida pelo hipotálamo como sensação de fome. Beber 500ml de água fria logo ao acordar estimula a termogênese simpática.
+                </p>
+                <div class="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
+                  <span class="text-xs font-bold text-cyan-400 uppercase">Dica Prática:</span>
+                  <p class="text-xs text-slate-300 mt-1">Adicione uma pitada de sal marinho integral ou raspas de limão na sua garrafa matinal para fornecer eletrólitos essenciais à absorção celular.</p>
+                </div>
+              </div>
+            `
+          },
+          {
+            page: 4,
+            title: 'Capítulo 4: O Papel do Sono na Queima Noturna',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-base leading-relaxed">
+                  Durante as fases 3 e 4 do sono profundo (NREM), ocorre o pico de liberação do hormônio do crescimento (GH), responsável pela regeneração muscular e mobilização de depósitos de gordura.
+                </p>
+                <p class="text-sm text-slate-300">
+                  Dormir menos de 6 horas por noite eleva o cortisol matinal em até 37%, induzindo o corpo a reter sódio e desacelerar a taxa metabólica basal.
+                </p>
+              </div>
+            `
+          },
+          {
+            page: 5,
+            title: 'Capítulo 5: Estratégia de Jejum Intermitente Seguro',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-base leading-relaxed">
+                  A janela 14/10 ou 16/8 dá ao sistema digestório o descanso necessário para ativar processos de autofagia e restauração da sensibilidade à insulina.
+                </p>
+                <p class="text-sm text-slate-300">
+                  Inicie gradualmente: jante às 20h e realize sua primeira refeição às 10h ou 12h do dia seguinte, hidratando-se copiosamente com chás e água durante a manhã.
+                </p>
+              </div>
+            `
+          },
+          {
+            page: 6,
+            title: 'Capítulo 6: Plano de Ação Semanal e Checklist',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <h4 class="font-bold text-emerald-400">Parabéns por concluir este Guia! 🎉</h4>
+                <p class="text-sm text-slate-300">
+                  Aplique pelo menos duas diretrizes a partir de amanhã cedo. Sua jornada rumo à sua melhor forma física é construída com micro-vitórias diárias!
+                </p>
+                <div class="p-4 bg-slate-900 border border-brand-500/30 rounded-2xl text-center">
+                  <span class="text-3xl">🏅</span>
+                  <div class="font-black text-brand-400 mt-1">Conquista de Leitor Concluída!</div>
+                  <p class="text-xs text-slate-400">Você ganhou +50 XP bônus por completar esta leitura.</p>
+                </div>
+              </div>
+            `
+          }
+        ]
+      },
+      {
+        id: 'pdf-2',
+        title: 'Protocolo Detox 7 Dias & Chás Termogênicos',
+        category: 'alimentacao',
+        categoryLabel: 'Alimentação & Dietas',
+        badge: 'Detox 🌿',
+        totalPages: 4,
+        readTimeEst: '10 min',
+        color: 'from-teal-600 to-cyan-800',
+        summary: 'Elimine retenção líquida e inchaço abdominal com combinações sinérgicas de ervas e infusões termogênicas.',
+        pages: [
+          {
+            page: 1,
+            title: 'Dia 1: Reset Hepático e Ativação Renal',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-sm leading-relaxed">
+                  O fígado é o principal laboratório de desintoxicação do corpo. Para otimizar a fase II da metabolização hepática, compostos sulfurosos presentes no alho, brócolis e infusão de dente-de-leão são cruciais.
+                </p>
+                <div class="bg-cyan-950/40 p-4 rounded-xl border border-cyan-500/30">
+                  <strong class="text-cyan-400 text-sm">Chá Desinchá Noturno:</strong>
+                  <p class="text-xs text-slate-300 mt-1">Camomila, erva-cidreira e gengibre ralado. Aqueça a 85°C e abafe por 7 minutos.</p>
+                </div>
+              </div>
+            `
+          },
+          {
+            page: 2,
+            title: 'Dia 2 & 3: Combate à Retenção Celular',
+            content: `
+              <div class="space-y-3 text-slate-200">
+                <p class="text-sm">Reduza o excesso de sódio circulante aumentando a proporção de potássio orgânico presente em abacates e folhas escuras.</p>
+                <p class="text-xs text-slate-400">Chá verde com cavalinha pela manhã estimula a diurese fisiológica sem depletar minerais vitais.</p>
+              </div>
+            `
+          },
+          {
+            page: 3,
+            title: 'Dia 4 & 5: Flora Intestinal e Eixo Intestino-Cérebro',
+            content: `
+              <div class="space-y-3 text-slate-200">
+                <p class="text-sm">A microbiota saudável modula a produção de serotonina e o controle da compulsão por doces. Consuma fibras fermentáveis.</p>
+              </div>
+            `
+          },
+          {
+            page: 4,
+            title: 'Dia 6 & 7: Consolidação e Manutenção',
+            content: `
+              <div class="space-y-3 text-slate-200">
+                <p class="text-sm font-semibold text-emerald-400">Protocolo Finalizado com Sucesso!</p>
+                <p class="text-xs text-slate-300">Mantenha o hábito de iniciar o dia com água morna e limão espremido.</p>
+              </div>
+            `
+          }
+        ]
+      },
+      {
+        id: 'pdf-3',
+        title: 'Manual de Treinos HIIT Queima Rápida',
+        category: 'treinos',
+        categoryLabel: 'Treinos & HIIT',
+        badge: 'Alta Intensidade ⚡',
+        totalPages: 5,
+        readTimeEst: '12 min',
+        color: 'from-orange-600 to-red-800',
+        summary: 'Treinos de 15 minutos em casa utilizando o peso do próprio corpo para induzir o efeito EPOC pós-exercício.',
+        pages: [
+          {
+            page: 1,
+            title: 'Princípios do Efeito EPOC',
+            content: `
+              <div class="space-y-4 text-slate-200">
+                <p class="text-sm">
+                  O Excess Post-exercise Oxygen Consumption (EPOC) força o organismo a gastar calorias extras até 36 horas após o término da sessão para restaurar os estoques de glicogênio e oxigênio muscular.
+                </p>
+                <div class="p-3 bg-red-950/40 border border-red-500/30 rounded-xl text-xs text-red-300">
+                  🔥 20 segundos na intensidade máxima (RPE 9-10) seguidos de 10 segundos de descanso ativo.
+                </div>
+              </div>
+            `
+          },
+          {
+            page: 2,
+            title: 'Treino A: Queimador Cardiovascular Tabata',
+            content: `
+              <ul class="list-disc pl-5 text-xs space-y-2 text-slate-300">
+                <li>Burpees adaptados - 4 rounds</li>
+                <li>Mountain Climbers (Escaladores) - 4 rounds</li>
+                <li>Agachamento com salto - 4 rounds</li>
+                <li>Polichinelos rápidos - 4 rounds</li>
+              </ul>
+            `
+          },
+          {
+            page: 3,
+            title: 'Treino B: Core e Abdômen Blindado',
+            content: `<p class="text-xs text-slate-300">Fortalecimento do transverso abdominal através de pranchas dinâmicas e hollow body holds.</p>`
+          },
+          {
+            page: 4,
+            title: 'Treino C: Inferiores e Metabolismo',
+            content: `<p class="text-xs text-slate-300">Avanço pliométrico e agachamentos isométricos com ênfase em recrutamento neuromuscular de fibras tipo II.</p>`
+          },
+          {
+            page: 5,
+            title: 'Recuperação e Mobilidade Ativa',
+            content: `<p class="text-xs text-emerald-400 font-bold">Manual concluído! Hora de colocar o corpo em movimento!</p>`
+          }
+        ]
+      },
+      {
+        id: 'pdf-4',
+        title: 'Mentalidade Magra: Vencendo a Ansiedade',
+        category: 'mente',
+        categoryLabel: 'Mente & Foco',
+        badge: 'Mentalidade 🧠',
+        totalPages: 4,
+        readTimeEst: '10 min',
+        color: 'from-purple-600 to-indigo-800',
+        summary: 'Domine a fome emocional, corte gatilhos de auto-sabotagem e estabeleça uma relação leve e prazerosa com a comida.',
+        pages: [
+          {
+            page: 1,
+            title: 'Fome Física vs. Fome Emocional',
+            content: `
+              <div class="space-y-3 text-slate-200">
+                <p class="text-sm">A fome física surge gradualmente e aceita qualquer alimento nutritivo. A fome emocional é repentina e exige alimentos específicos hiperpalatáveis.</p>
+              </div>
+            `
+          },
+          {
+            page: 2,
+            title: 'A Regra da Pausa de 10 Minutos',
+            content: `<p class="text-xs text-slate-300">Ao sentir vontade compulsiva, beba um copo d'água e mude de cômodo por 10 minutos para reordenar a liberação de dopamina.</p>`
+          },
+          {
+            page: 3,
+            title: 'Comendo com Atenção Plena (Mindful Eating)',
+            content: `<p class="text-xs text-slate-300">Mastigue cada garfada pelo menos 20 vezes sem telas ou distrações ligadas.</p>`
+          },
+          {
+            page: 4,
+            title: 'O Fim da Culpa Alimentar',
+            content: `<p class="text-xs text-purple-300 font-bold">Consistência supera a perfeição em 100% das vezes.</p>`
+          }
+        ]
+      },
+      {
+        id: 'pdf-vip-1',
+        title: '50 Receitas Seca Barriga Gourmet',
+        category: 'alimentacao',
+        categoryLabel: 'Exclusivo VIP 💎',
+        badge: 'VIP Loja',
+        totalPages: 8,
+        readTimeEst: '25 min',
+        isVipLocked: true,
+        priceCoins: 150,
+        color: 'from-amber-600 to-yellow-800',
+        summary: 'Sobremesas sem açúcar, almoços proteicos práticos e snacks para comer sem culpa a qualquer hora do dia.',
+        pages: [
+          {
+            page: 1,
+            title: 'Mousse de Cacau 70% com Abacate Cremoso',
+            content: `<p class="text-xs text-slate-300">Textura de restaurante refinado, rica em gorduras monoinsaturadas e antioxidantes poderosos.</p>`
+          },
+          {
+            page: 2,
+            title: 'Panqueca de Aveia e Banana com Canela',
+            content: `<p class="text-xs text-slate-300">Energia de liberação lenta para pré-treino perfeito.</p>`
+          }
+        ]
+      }
+    ];
+
+    /* ========================================================
+       3. SINTETIZADOR DE ÁUDIO WEB AUDIO API (100% OFFLINE)
+       ======================================================== */
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        if (type === 'coin') {
+          // Efeito sonoro de moeda estilo videogame
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc2.type = 'sine';
+
+          osc1.frequency.setValueAtTime(987.77, now); // B5
+          osc1.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+          osc2.frequency.setValueAtTime(1975.53, now + 0.08); // B6
+
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.35);
+          osc2.stop(now + 0.35);
+        } else if (type === 'fanfare') {
+          // Fanfarra de Level Up / Recompensa Diária
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+            gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.1);
+            osc.stop(now + idx * 0.1 + 0.35);
+          });
+        } else if (type === 'click') {
+          // Clique sutil de página
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.04);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        }
+      } catch (err) {
+        // Silencioso se navegador bloquear autoplay antes de interação
+      }
+    }
+
+    /* ========================================================
+       4. GAMIFICAÇÃO: XP, NÍVEL, MOEDAS, BADGES, MISSÕES
+       ======================================================== */
+    const levelTitles = [
+      'Iniciante da Jornada',
+      'Leitor Focado',
+      'Disciplinado',
+      'Atleta do Conhecimento',
+      'Mestre da Transformação',
+      'Lenda da Saúde 👑'
+    ];
+
+    function xpForLevel(lvl) {
+      return lvl * 100;
+    }
+
+    function addXP(amount, reason = '') {
+      userState.xp += amount;
+      createFloatingXP(`+${amount} XP ${reason}`);
+      playSound('coin');
+
+      const nextXp = xpForLevel(userState.level);
+      if (userState.xp >= nextXp) {
+        userState.xp -= nextXp;
+        userState.level++;
+        showToast('🎉 SUBIU DE NÍVEL!', `Parabéns! Você alcançou o Nível ${userState.level}: ${levelTitles[Math.min(userState.level - 1, levelTitles.length - 1)]}`, '⭐');
+        playSound('fanfare');
+        triggerConfetti();
+
+        if (userState.level >= 5) {
+          unlockBadge('master_mind');
+        }
+      }
+      saveState();
+    }
+
+    function addCoins(amount) {
+      userState.coins += amount;
+      playSound('coin');
+      if (userState.coins >= 300) {
+        unlockBadge('coin_hoarder');
+      }
+      saveState();
+    }
+
+    function unlockBadge(badgeKey) {
+      if (userState.badges[badgeKey] && !userState.badges[badgeKey].unlocked) {
+        userState.badges[badgeKey].unlocked = true;
+        showToast('🏆 CONQUISTA DESBLOQUEADA!', `${userState.badges[badgeKey].title}: ${userState.badges[badgeKey].desc}`, userState.badges[badgeKey].icon);
+        addXP(userState.badges[badgeKey].rewardXP, `(${userState.badges[badgeKey].title})`);
+        triggerConfetti();
+        saveState();
+        renderBadges();
+      }
+    }
+
+    function advanceQuest(questId, amount = 1) {
+      const q = userState.quests.find(item => item.id === questId);
+      if (q && !q.claimed) {
+        q.progress = Math.min(q.target, q.progress + amount);
+        saveState();
+        renderQuests();
+      }
+    }
+
+    function claimQuestReward(questId) {
+      const q = userState.quests.find(item => item.id === questId);
+      if (q && q.progress >= q.target && !q.claimed) {
+        q.claimed = true;
+        addXP(q.rewardXP, 'Missão Cumprida');
+        addCoins(q.rewardCoins);
+        showToast('🎯 MISSÃO CONCLUÍDA!', `Você resgatou +${q.rewardXP} XP e +${q.rewardCoins} FitCoins!`, '🎁');
+        triggerConfetti();
+        saveState();
+        renderQuests();
+      }
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+      }
+    }
+
+    function createFloatingXP(text) {
+      const el = document.createElement('div');
+      el.className = 'floating-xp text-base sm:text-xl';
+      el.innerText = text;
+      el.style.left = `${Math.min(window.innerWidth - 120, Math.max(20, window.innerWidth / 2 + (Math.random() * 80 - 40)))}px`;
+      el.style.top = `${window.innerHeight / 2 - 50}px`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    /* ========================================================
+       5. SISTEMA DE CHECK-IN DIÁRIO & RECOMPENSAS DE 7 DIAS
+       ======================================================== */
+    const dailyRewardsSchedule = [
+      { day: 1, xp: 50, coins: 20, icon: '🌱' },
+      { day: 2, xp: 75, coins: 30, icon: '🌿' },
+      { day: 3, xp: 100, coins: 40, icon: '🔥' },
+      { day: 4, xp: 120, coins: 50, icon: '⭐' },
+      { day: 5, xp: 150, coins: 60, icon: '💎' },
+      { day: 6, xp: 200, coins: 80, icon: '🚀' },
+      { day: 7, xp: 300, coins: 150, icon: '👑', isGrandPrize: true }
+    ];
+
+    function getTodayString() {
+      const d = new Date();
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+
+    function canCheckinToday() {
+      return userState.lastCheckinDate !== getTodayString();
+    }
+
+    function doDailyCheckin() {
+      if (!canCheckinToday()) {
+        showToast('Aviso', 'Você já coletou a recompensa diária de hoje! Volte amanhã.', '⏳');
+        closeCheckinModal();
+        return;
+      }
+
+      const today = getTodayString();
+      userState.lastCheckinDate = today;
+      userState.streak = (userState.streak || 0) + 1;
+
+      const scheduleIndex = (userState.streak - 1) % 7;
+      const reward = dailyRewardsSchedule[scheduleIndex];
+
+      addXP(reward.xp, 'Check-in');
+      addCoins(reward.coins);
+      advanceQuest('q1', 1);
+
+      if (userState.streak >= 3) {
+        unlockBadge('streak_3');
+      }
+
+      showToast('🎁 RECOMPENSA COLETADA!', `Dia ${reward.day}: +${reward.xp} XP e +${reward.coins} FitCoins adicionados!`, '🔥');
+      triggerConfetti();
+      playSound('fanfare');
+
+      closeCheckinModal();
+      saveState();
+      renderSevenDaysGrid();
+    }
+
+    function openCheckinModal() {
+      document.getElementById('checkinModal').classList.remove('hidden');
+    }
+
+    function closeCheckinModal() {
+      document.getElementById('checkinModal').classList.add('hidden');
+    }
+
+    function renderSevenDaysGrid() {
+      const container = document.getElementById('sevenDaysGrid');
+      if (!container) return;
+
+      const currentDayStep = ((userState.streak - 1) % 7) + 1;
+      const checkedToday = !canCheckinToday();
+
+      container.innerHTML = dailyRewardsSchedule.map((item) => {
+        const isPast = item.day < currentDayStep || (item.day === currentDayStep && checkedToday);
+        const isCurrent = item.day === currentDayStep && !checkedToday;
+        const isFuture = item.day > currentDayStep;
+
+        return `
+          <div class="relative p-3.5 rounded-2xl flex flex-col items-center justify-between text-center transition-all ${
+            isCurrent
+              ? 'bg-gradient-to-b from-amber-500/20 to-orange-500/20 border-2 border-amber-400 shadow-lg shadow-amber-500/20 scale-105'
+              : isPast
+              ? 'bg-slate-900/90 border border-brand-500/30 text-slate-400'
+              : 'bg-slate-900/50 border border-slate-800 text-slate-500'
+          }">
+            <span class="text-[11px] font-bold uppercase ${isCurrent ? 'text-amber-400' : isPast ? 'text-brand-400' : 'text-slate-500'}">
+              Dia ${item.day}
+            </span>
+            <div class="my-2 text-2xl ${isCurrent ? 'animate-bounce-slow' : ''}">
+              ${item.icon}
+            </div>
+            <div class="text-xs font-black ${isCurrent ? 'text-white' : 'text-slate-300'}">
+              +${item.coins} 🪙
+            </div>
+            <div class="text-[10px] text-slate-400">
+              +${item.xp} XP
+            </div>
+            ${
+              isPast
+                ? '<span class="mt-2 text-[10px] bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full font-bold">✓ Coletado</span>'
+                : isCurrent
+                ? '<button onclick="doDailyCheckin()" class="mt-2 text-[10px] bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-2 py-0.5 rounded-full animate-pulse-fast">Resgatar</button>'
+                : '<span class="mt-2 text-[10px] text-slate-600">Bloqueado</span>'
+            }
+          </div>
+        `;
+      }).join('');
+
+      // Atualiza texto e estado dos botões de checkin
+      const btnHeader = document.getElementById('headerCheckinBtn');
+      const badgeNotif = document.getElementById('checkinBadgeNotification');
+      const mainBtn = document.getElementById('mainCheckinActionBtn');
+
+      if (!canCheckinToday()) {
+        if (badgeNotif) badgeNotif.classList.add('hidden');
+        if (mainBtn) {
+          mainBtn.classList.replace('from-amber-500', 'from-slate-700');
+          mainBtn.classList.replace('to-orange-500', 'to-slate-800');
+          mainBtn.classList.add('opacity-70');
+          mainBtn.innerHTML = '<span>✓</span><span>Recompensa Coletada Hoje</span>';
+        }
+      } else {
+        if (badgeNotif) badgeNotif.classList.remove('hidden');
+      }
+    }
+
+    /* ========================================================
+       6. ROLETA DA SORTE INTERATIVA
+       ======================================================== */
+    const wheelPrizes = [
+      { text: '+50 FitCoins', type: 'coins', amount: 50, color: '#f59e0b' },
+      { text: '+100 XP', type: 'xp', amount: 100, color: '#10b981' },
+      { text: '+25 FitCoins', type: 'coins', amount: 25, color: '#3b82f6' },
+      { text: '+200 FitCoins', type: 'coins', amount: 200, color: '#ec4899' },
+      { text: '+150 XP', type: 'xp', amount: 150, color: '#8b5cf6' },
+      { text: 'Baú Surpresa', type: 'chest', amount: 75, color: '#14b8a6' }
+    ];
+
+    let isSpinning = false;
+    let wheelAngle = 0;
+
+    function drawWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const numSlices = wheelPrizes.length;
+      const sliceAngle = (2 * Math.PI) / numSlices;
+      const radius = canvas.width / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(radius, radius);
+      ctx.rotate(wheelAngle);
+
+      wheelPrizes.forEach((prize, i) => {
+        const startAngle = i * sliceAngle;
+        const endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius - 4, startAngle, endAngle);
+        ctx.fillStyle = prize.color;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0f172a';
+        ctx.stroke();
+
+        // Texto do prêmio
+        ctx.save();
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(prize.text, radius - 20, 4);
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    function canSpinWheelToday() {
+      return userState.lastSpinDate !== getTodayString();
+    }
+
+    function spinWheel() {
+      if (isSpinning) return;
+      if (!canSpinWheelToday()) {
+        showToast('Aviso', 'Você já girou a roleta hoje! Volte amanhã para mais giros.', '🎰');
+        return;
+      }
+
+      isSpinning = true;
+      playSound('click');
+
+      const numSlices = wheelPrizes.length;
+      const winningIndex = Math.floor(Math.random() * numSlices);
+      const sliceAngle = (2 * Math.PI) / numSlices;
+
+      // Cálculo de rotação para alinhar com o ponteiro no topo
+      // O ponteiro aponta para -Math.PI / 2
+      const targetCenterAngle = winningIndex * sliceAngle + sliceAngle / 2;
+      const fullRotations = 5 * (2 * Math.PI);
+      const desiredFinalAngle = fullRotations + (3 * Math.PI / 2 - targetCenterAngle);
+
+      const startTime = performance.now();
+      const spinDuration = 3800; // ms
+
+      function animateSpin(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / spinDuration, 1);
+        // Easing cúbico desacelerando suavemente
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+
+        wheelAngle = desiredFinalAngle * easeOut;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animateSpin);
+        } else {
+          isSpinning = false;
+          userState.lastSpinDate = getTodayString();
+          advanceQuest('q3', 1);
+
+          const prize = wheelPrizes[winningIndex];
+          if (prize.type === 'coins') {
+            addCoins(prize.amount);
+            showToast('🎰 ROLETA DA SORTE!', `Você ganhou ${prize.text}!`, '🪙');
+          } else if (prize.type === 'xp') {
+            addXP(prize.amount, 'Roleta');
+            showToast('🎰 ROLETA DA SORTE!', `Você ganhou ${prize.text}!`, '⚡');
+          } else if (prize.type === 'chest') {
+            addCoins(50);
+            addXP(100, 'Baú');
+            showToast('🎰 BAÚ ÉPICO!', `Você abriu o baú e encontrou +50 Moedas e +100 XP!`, '🎁');
+          }
+
+          triggerConfetti();
+          playSound('fanfare');
+          saveState();
+          updateSpinUI();
+        }
+      }
+
+      requestAnimationFrame(animateSpin);
+    }
+
+    function updateSpinUI() {
+      const statusText = document.getElementById('spinStatusText');
+      const spinMainBtn = document.getElementById('spinMainBtn');
+      const spinCenterBtn = document.getElementById('spinCenterBtn');
+
+      if (!canSpinWheelToday()) {
+        if (statusText) statusText.innerText = '✓ Giro de hoje já realizado! Volte amanhã.';
+        if (spinMainBtn) {
+          spinMainBtn.classList.add('opacity-50', 'pointer-events-none');
+          spinMainBtn.innerText = '✓ Giro Concluído Hoje';
+        }
+      } else {
+        if (statusText) statusText.innerText = '1 Giro gratuito disponível!';
+      }
+    }
+
+    /* ========================================================
+       7. BIBLIOTECA, CARDS E IMPORTAÇÃO DE PDF
+       ======================================================== */
+    let currentFilter = 'todos';
+    let currentSearch = '';
+
+    function getAllLibraryItems() {
+      return [...userState.userUploadedPdfs, ...initialLibrary];
+    }
+
+    function renderLibrary() {
+      const grid = document.getElementById('pdfGrid');
+      const emptyState = document.getElementById('emptyState');
+      if (!grid) return;
+
+      const items = getAllLibraryItems().filter(item => {
+        const matchesCategory = currentFilter === 'todos' ||
+          (currentFilter === 'meus-pdfs' ? item.isUserUploaded : item.category === currentFilter);
+        const matchesSearch = item.title.toLowerCase().includes(currentSearch.toLowerCase()) ||
+          (item.summary && item.summary.toLowerCase().includes(currentSearch.toLowerCase()));
+        return matchesCategory && matchesSearch;
+      });
+
+      updateCategoryCounts();
+
+      if (items.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = items.map(item => {
+        const history = userState.readHistory[item.id] || { currentPage: 1, completed: false };
+        const percent = Math.round((history.currentPage / item.totalPages) * 100);
+        const isVipUnlocked = !item.isVipLocked || userState.unlockedRewards.includes(item.id);
+
+        return `
+          <div class="glass-card rounded-3xl p-5 border border-slate-800 flex flex-col justify-between hover:border-brand-500/50 hover:shadow-xl hover:shadow-brand-500/10 transition-all duration-300 group">
+            <div>
+              <!-- Capa / Header visual do card -->
+              <div class="relative h-44 rounded-2xl bg-gradient-to-tr ${item.color || 'from-emerald-700 to-slate-900'} p-4 flex flex-col justify-between overflow-hidden shadow-inner">
+                <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                
+                <div class="flex items-center justify-between">
+                  <span class="bg-slate-950/70 backdrop-blur-md text-[10px] font-bold text-slate-200 px-2.5 py-1 rounded-full uppercase border border-white/10">
+                    ${item.categoryLabel || 'Documento'}
+                  </span>
+                  ${
+                    item.badge
+                      ? `<span class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow">${item.badge}</span>`
+                      : ''
+                  }
+                </div>
+
+                <div>
+                  <div class="text-3xl mb-1">${item.isUserUploaded ? '📁' : '📖'}</div>
+                  <h4 class="font-black text-white text-base leading-tight drop-shadow-md line-clamp-2">
+                    ${item.title}
+                  </h4>
+                </div>
+              </div>
+
+              <!-- Descrição & Informações -->
+              <p class="text-xs text-slate-400 mt-3 line-clamp-2">
+                ${item.summary || 'PDF interativo para leitura e aprendizado prático.'}
+              </p>
+
+              <div class="flex items-center justify-between text-[11px] text-slate-400 mt-4 py-2 border-y border-slate-800/80">
+                <span class="flex items-center gap-1">📄 ${item.totalPages} páginas</span>
+                <span class="flex items-center gap-1">⏱️ ${item.readTimeEst || '10 min'}</span>
+                <span class="text-emerald-400 font-bold">+15 XP/pág</span>
+              </div>
+
+              <!-- Barra de Progresso de Leitura -->
+              <div class="mt-3">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                  <span>Progresso</span>
+                  <span class="font-bold ${percent === 100 ? 'text-brand-400' : 'text-slate-300'}">${percent}% ${percent === 100 ? '✓ Lido' : ''}</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-gradient-to-r from-brand-500 to-emerald-400 h-1.5 rounded-full" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botão de Ação -->
+            <div class="mt-5">
+              ${
+                !isVipUnlocked
+                  ? `<button onclick="buyVipItem('${item.id}', ${item.priceCoins})" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition">
+                      <span>🔒 Desbloquear por ${item.priceCoins} FitCoins</span>
+                    </button>`
+                  : `<button onclick="openPdfReader('${item.id}')" class="w-full bg-slate-800 group-hover:bg-brand-500 group-hover:text-slate-950 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition duration-200 shadow-md">
+                      <span>${history.currentPage > 1 ? 'Continuar Leitura' : 'Ler Agora'}</span>
+                      <span>→</span>
+                    </button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateCategoryCounts() {
+      const all = getAllLibraryItems();
+      document.getElementById('count-todos').innerText = all.length;
+      document.getElementById('count-alimentacao').innerText = all.filter(i => i.category === 'alimentacao').length;
+      document.getElementById('count-treinos').innerText = all.filter(i => i.category === 'treinos').length;
+      document.getElementById('count-mente').innerText = all.filter(i => i.category === 'mente').length;
+      document.getElementById('count-meus-pdfs').innerText = userState.userUploadedPdfs.length;
+    }
+
+    function filterCategory(cat) {
+      currentFilter = cat;
+      document.querySelectorAll('.category-pill').forEach(btn => {
+        btn.classList.remove('active', 'bg-brand-500', 'text-slate-950');
+        btn.classList.add('bg-slate-900', 'text-slate-300');
+      });
+      event.currentTarget.classList.add('active', 'bg-brand-500', 'text-slate-950');
+      event.currentTarget.classList.remove('bg-slate-900', 'text-slate-300');
+      renderLibrary();
+    }
+
+    function handleSearch(val) {
+      currentSearch = val;
+      renderLibrary();
+    }
+
+    /* Upload de PDF do Usuário */
+    function handleUserPdfUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const objectUrl = URL.createObjectURL(file);
+      const newPdf = {
+        id: 'user-pdf-' + Date.now(),
+        title: file.name.replace(/\.pdf$/i, ''),
+        category: 'meus-pdfs',
+        categoryLabel: 'PDF Importado',
+        badge: 'Novo 📤',
+        totalPages: 10,
+        readTimeEst: 'Livre',
+        summary: `Arquivo PDF importado diretamente do seu dispositivo (${(file.size / (1024 * 1024)).toFixed(2)} MB).`,
+        isUserUploaded: true,
+        blobUrl: objectUrl,
+        color: 'from-blue-600 to-slate-800'
+      };
+
+      userState.userUploadedPdfs.unshift(newPdf);
+      saveState();
+      renderLibrary();
+      showToast('📤 PDF IMPORTADO!', `"${newPdf.title}" foi adicionado com sucesso à sua biblioteca!`, '🎉');
+      triggerConfetti();
+
+      // Já abre o leitor diretamente!
+      openPdfReader(newPdf.id);
+    }
+
+    /* ========================================================
+       8. LEITOR DE PDF IMERSIVO & RECOMPENSAS POR LEITURA
+       ======================================================== */
+    let currentBook = null;
+    let currentReaderPage = 1;
+    let readingTimerInterval = null;
+    let activeReadingSeconds = 0;
+
+    function openPdfReader(bookId) {
+      currentBook = getAllLibraryItems().find(b => b.id === bookId);
+      if (!currentBook) return;
+
+      const history = userState.readHistory[bookId] || { currentPage: 1, completed: false };
+      currentReaderPage = history.currentPage || 1;
+
+      document.getElementById('readerTitle').innerText = currentBook.title;
+      document.getElementById('readerCategoryBadge').innerText = currentBook.categoryLabel || 'Leitura';
+
+      updateReaderView();
+      document.getElementById('pdfReaderModal').classList.remove('hidden');
+
+      // Inicia timer de leitura
+      activeReadingSeconds = 0;
+      clearInterval(readingTimerInterval);
+      readingTimerInterval = setInterval(() => {
+        activeReadingSeconds++;
+        userState.readTimeSeconds = (userState.readTimeSeconds || 0) + 1;
+        
+        const mins = Math.floor(activeReadingSeconds / 60);
+        const secs = activeReadingSeconds % 60;
+        document.getElementById('readingTimer').innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        // A cada 60 segundos contínuos lendo: +10 FitCoins de recompensa de foco!
+        if (activeReadingSeconds > 0 && activeReadingSeconds % 60 === 0) {
+          addCoins(10);
+          showToast('⏱️ BÔNUS DE FOCO!', 'Você leu por mais 1 minuto focado: +10 FitCoins!', '🪙');
+        }
+      }, 1000);
+    }
+
+    function closePdfReader() {
+      document.getElementById('pdfReaderModal').classList.add('hidden');
+      clearInterval(readingTimerInterval);
+      saveState();
+      renderLibrary();
+    }
+
+    function updateReaderView() {
+      if (!currentBook) return;
+
+      const total = currentBook.totalPages || 1;
+      document.getElementById('readerPageIndicator').innerText = `Página ${currentReaderPage} de ${total}`;
+      document.getElementById('readerPageNumberFooter').innerText = `Página ${currentReaderPage} de ${total}`;
+
+      const percent = Math.round((currentReaderPage / total) * 100);
+      document.getElementById('readerPercentText').innerText = `${percent}%`;
+
+      document.getElementById('prevPageBtn').disabled = currentReaderPage <= 1;
+      document.getElementById('nextPageBtn').disabled = currentReaderPage >= total;
+
+      const container = document.getElementById('readerContentArea');
+
+      // Se for PDF do próprio usuário, abre com iframe usando o blobUrl
+      if (currentBook.isUserUploaded && currentBook.blobUrl) {
+        container.innerHTML = `
+          <div class="w-full h-full flex flex-col items-center">
+            <div class="w-full flex justify-between items-center mb-3 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-xs text-slate-300">Visualizando seu arquivo PDF nativo</span>
+              <a href="${currentBook.blobUrl}" target="_blank" class="text-xs text-brand-400 hover:underline">Abrir em nova aba ↗</a>
+            </div>
+            <iframe src="${currentBook.blobUrl}" class="w-full h-[65vh] rounded-2xl border border-slate-800 shadow-inner bg-slate-900"></iframe>
+          </div>
+        `;
+        return;
+      }
+
+      // Se for PDF demonstrativo com páginas estruturadas
+      const pageData = (currentBook.pages && currentBook.pages[currentReaderPage - 1]) || {
+        title: `Seção ${currentReaderPage}`,
+        content: `<p class="text-slate-300 text-sm">Conteúdo demonstrativo da página ${currentReaderPage} do livro ${currentBook.title}.</p>`
+      };
+
+      container.innerHTML = `
+        <div class="space-y-6 animate-fade-in">
+          <div class="border-b border-slate-800/80 pb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-brand-400">Página ${currentReaderPage}</span>
+            <h2 class="text-xl sm:text-2xl font-black text-white mt-1">${pageData.title}</h2>
+          </div>
+          <div class="text-slate-200 text-sm sm:text-base leading-relaxed">
+            ${pageData.content}
+          </div>
+        </div>
+      `;
+    }
+
+    function prevReaderPage() {
+      if (currentReaderPage > 1) {
+        currentReaderPage--;
+        playSound('click');
+        saveReaderProgress();
+        updateReaderView();
+      }
+    }
+
+    function nextReaderPage() {
+      if (currentBook && currentReaderPage < currentBook.totalPages) {
+        currentReaderPage++;
+        playSound('click');
+        saveReaderProgress();
+        updateReaderView();
+      }
+    }
+
+    function claimPageReward() {
+      addXP(15, 'Página Lida');
+      addCoins(5);
+      userState.pagesReadTotal = (userState.pagesReadTotal || 0) + 1;
+      advanceQuest('q2', 1);
+
+      if (userState.pagesReadTotal >= 1) {
+        unlockBadge('first_step');
+      }
+      if (userState.pagesReadTotal >= 20) {
+        unlockBadge('bookworm');
+      }
+
+      showToast('📖 PÁGINA MARCADA!', 'Você ganhou +15 XP e +5 FitCoins por esta leitura.', '✨');
+      saveReaderProgress();
+
+      if (currentReaderPage < currentBook.totalPages) {
+        nextReaderPage();
+      }
+    }
+
+    function saveReaderProgress() {
+      if (!currentBook) return;
+      if (!userState.readHistory[currentBook.id]) {
+        userState.readHistory[currentBook.id] = { currentPage: 1, completed: false };
+      }
+      userState.readHistory[currentBook.id].currentPage = Math.max(
+        userState.readHistory[currentBook.id].currentPage,
+        currentReaderPage
+      );
+      if (currentReaderPage === currentBook.totalPages) {
+        userState.readHistory[currentBook.id].completed = true;
+      }
+      saveState();
+    }
+
+    /* ========================================================
+       9. MISSÕES DIÁRIAS (QUESTS)
+       ======================================================== */
+    function renderQuests() {
+      const container = document.getElementById('questsListContainer');
+      const badgeCount = document.getElementById('questBadgeCount');
+      if (!container) return;
+
+      let unclaimedCompletedCount = 0;
+
+      container.innerHTML = userState.quests.map(q => {
+        const isCompleted = q.progress >= q.target;
+        if (isCompleted && !q.claimed) unclaimedCompletedCount++;
+
+        const percent = Math.min(100, Math.round((q.progress / q.target) * 100));
+
+        return `
+          <div class="glass-card rounded-2xl p-4 sm:p-5 border border-slate-800 flex flex-col justify-between ${
+            q.claimed ? 'opacity-60 bg-slate-900/40' : ''
+          }">
+            <div>
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h4 class="font-bold text-white text-sm sm:text-base">${q.title}</h4>
+                  <p class="text-xs text-slate-400 mt-0.5">${q.desc}</p>
+                </div>
+                <div class="flex items-center gap-1.5 text-xs font-black">
+                  <span class="text-brand-400">+${q.rewardXP} XP</span>
+                  <span class="text-yellow-400">+${q.rewardCoins} 🪙</span>
+                </div>
+              </div>
+
+              <!-- Progresso -->
+              <div class="mt-4">
+                <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <span>Progresso</span>
+                  <span class="font-bold ${isCompleted ? 'text-brand-400' : 'text-slate-300'}">${q.progress}/${q.target}</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-gradient-to-r from-brand-500 to-cyan-400 h-2 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botão de Ação -->
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex justify-end">
+              ${
+                q.claimed
+                  ? '<span class="text-xs text-brand-400 font-bold flex items-center gap-1">✓ Recompensa Resgatada</span>'
+                  : isCompleted
+                  ? `<button onclick="claimQuestReward('${q.id}')" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-4 py-1.5 rounded-xl text-xs active:scale-95 transition shadow-lg shadow-orange-500/20 animate-pulse-fast">
+                      Resgatar Recompensa! 🎁
+                    </button>`
+                  : '<span class="text-xs text-slate-500">Em andamento...</span>'
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (badgeCount) {
+        badgeCount.innerText = unclaimedCompletedCount;
+        badgeCount.style.display = unclaimedCompletedCount > 0 ? 'inline' : 'none';
+      }
+    }
+
+    /* ========================================================
+       10. MURAL DE CONQUISTAS (BADGES)
+       ======================================================== */
+    function renderBadges() {
+      const container = document.getElementById('badgesContainer');
+      const counterEl = document.getElementById('unlockedBadgesCount');
+      if (!container) return;
+
+      const badgesArray = Object.values(userState.badges);
+      const unlockedCount = badgesArray.filter(b => b.unlocked).length;
+      if (counterEl) counterEl.innerText = unlockedCount;
+
+      container.innerHTML = badgesArray.map(b => {
+        return `
+          <div class="glass-card rounded-2xl p-5 border ${
+            b.unlocked
+              ? 'border-brand-500/40 bg-gradient-to-b from-slate-900 to-slate-950 shadow-lg shadow-brand-500/10'
+              : 'border-slate-800/60 bg-slate-900/30 opacity-60'
+          } flex items-center gap-4 transition-all">
+            <div class="w-14 h-14 rounded-2xl ${
+              b.unlocked ? 'bg-brand-500/20 border border-brand-500/40' : 'bg-slate-800 border border-slate-700'
+            } flex items-center justify-center text-3xl">
+              ${b.icon}
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-sm ${b.unlocked ? 'text-white' : 'text-slate-400'}">${b.title}</h4>
+                <span class="text-[10px] font-bold ${b.unlocked ? 'text-brand-400' : 'text-slate-500'}">
+                  ${b.unlocked ? '✓ Desbloqueada' : 'Bloqueada'}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">${b.desc}</p>
+              <div class="text-[10px] text-amber-400 font-semibold mt-1.5">+${b.rewardXP} XP bônus</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ========================================================
+       11. LOJA VIP FITCOINS
+       ======================================================== */
+    const shopCatalog = [
+      {
+        id: 'pdf-vip-1',
+        title: 'E-book VIP: 50 Receitas Seca Barriga Gourmet',
+        desc: 'Desbloqueie acesso vitalício ao livro com 50 opções deliciosas e sem culpa.',
+        price: 150,
+        type: 'pdf',
+        icon: '📚'
+      },
+      {
+        id: 'theme_gold',
+        title: 'Tema Dourado Lendário do App',
+        desc: 'Personalize sua interface com bordas douradas e brilho de mestre.',
+        price: 250,
+        type: 'theme',
+        icon: '✨'
+      },
+      {
+        id: 'certificate_pro',
+        title: 'Certificado Digital de Leitor Fitness',
+        desc: 'Certificado personalizado em alta resolução atestando seus estudos.',
+        price: 350,
+        type: 'badge',
+        icon: '📜'
+      }
+    ];
+
+    function renderShop() {
+      const container = document.getElementById('shopItemsContainer');
+      const balanceEl = document.getElementById('shopCoinsBalance');
+      if (balanceEl) balanceEl.innerText = `${userState.coins} FitCoins`;
+      if (!container) return;
+
+      container.innerHTML = shopCatalog.map(item => {
+        const isOwned = userState.unlockedRewards.includes(item.id);
+        const canAfford = userState.coins >= item.price;
+
+        return `
+          <div class="glass-card rounded-3xl p-6 border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mb-4">
+                ${item.icon}
+              </div>
+              <h3 class="font-black text-white text-base">${item.title}</h3>
+              <p class="text-xs text-slate-400 mt-2">${item.desc}</p>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-amber-400 font-black text-sm flex items-center gap-1">
+                🪙 ${item.price} Moedas
+              </span>
+
+              ${
+                isOwned
+                  ? '<span class="text-xs text-brand-400 font-bold bg-brand-500/20 px-3 py-1.5 rounded-xl">✓ Adquirido</span>'
+                  : `<button onclick="buyVipItem('${item.id}', ${item.price})" class="px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      canAfford
+                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 active:scale-95 shadow-md shadow-amber-500/20'
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    }">
+                      Comprar Agora
+                    </button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function buyVipItem(itemId, price) {
+      if (userState.unlockedRewards.includes(itemId)) {
+        showToast('Aviso', 'Você já possui este item desbloqueado!', '✓');
+        return;
+      }
+      if (userState.coins < price) {
+        showToast('Saldo Insuficiente', `Você precisa de ${price} FitCoins. Continue lendo para ganhar mais!`, '🪙');
+        return;
+      }
+
+      userState.coins -= price;
+      userState.unlockedRewards.push(itemId);
+      playSound('fanfare');
+      triggerConfetti();
+      showToast('🎉 COMPRA REALIZADA COM SUCESSO!', 'Item desbloqueado e disponível na sua conta!', '💎');
+      saveState();
+      renderShop();
+      renderLibrary();
+    }
+
+    /* ========================================================
+       12. NAVEGAÇÃO DE ABAS & TOASTS
+       ======================================================== */
+    function switchTab(tabName) {
+      ['library', 'rewards', 'quests', 'achievements', 'shop'].forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (view) view.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('text-emerald-400', 'bg-brand-500/10', 'border-brand-500/30');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      const activeView = document.getElementById(`view-${tabName}`);
+      const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('text-emerald-400', 'bg-brand-500/10', 'border', 'border-brand-500/30');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      if (tabName === 'shop') {
+        advanceQuest('q4', 1);
+        renderShop();
+      } else if (tabName === 'rewards') {
+        renderSevenDaysGrid();
+        drawWheel();
+        updateSpinUI();
+      } else if (tabName === 'quests') {
+        renderQuests();
+      } else if (tabName === 'achievements') {
+        renderBadges();
+      } else if (tabName === 'library') {
+        renderLibrary();
+      }
+    }
+
+    function updateUIHeader() {
+      // Streak
+      document.getElementById('streakDisplay').innerText = `${userState.streak || 1} ${userState.streak === 1 ? 'Dia' : 'Dias'}`;
+      // Moedas
+      document.getElementById('coinsDisplay').innerText = userState.coins;
+      // Nível e XP
+      const title = levelTitles[Math.min(userState.level - 1, levelTitles.length - 1)];
+      document.getElementById('levelNameDisplay').innerText = `Nv. ${userState.level} ${title.split(' ')[0]}`;
+      const needed = xpForLevel(userState.level);
+      document.getElementById('xpRatioDisplay').innerText = `${userState.xp}/${needed} XP`;
+      const pct = Math.min(100, Math.round((userState.xp / needed) * 100));
+      document.getElementById('xpProgressBar').style.width = `${pct}%`;
+    }
+
+    let toastTimeout = null;
+    function showToast(title, msg, icon = '🎉') {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastTitle').innerText = title;
+      document.getElementById('toastMessage').innerText = msg;
+      document.getElementById('toastIcon').innerText = icon;
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3500);
+    }
+
+    /* ========================================================
+       13. INICIALIZAÇÃO DO SISTEMA
+       ======================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      updateUIHeader();
+      renderLibrary();
+      renderSevenDaysGrid();
+      renderQuests();
+      renderBadges();
+      renderShop();
+      drawWheel();
+      updateSpinUI();
+
+      // Se for primeiro dia e nunca fez checkin, exibe modal de checkin suavemente
+      if (canCheckinToday()) {
+        setTimeout(() => {
+          openCheckinModal();
+        }, 800);
+      }
+    });
+  </script>
+</body>
+</html>
